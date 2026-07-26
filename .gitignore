@@ -1,0 +1,11 @@
+node_modules/
+.pnpm-store/
+.next/
+.open-next/
+.wrangler/
+*.tsbuildinfo
+.dev.vars*
+!.dev.vars.example
+.learnings/
+tests/screenshots/
+tests/*.log
