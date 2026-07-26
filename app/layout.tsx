@@ -1,9 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./v2.css";
 
 export const metadata: Metadata = {
-  title: "乘法蛋仔大闯关",
-  description: "边闯关边练习乘法口诀的原创儿童小游戏",
+  title: "乘法蛋仔大闯关 V2",
+  description: "24关原创乘法口诀派对闯关小游戏",
 };
 
 export const viewport: Viewport = {

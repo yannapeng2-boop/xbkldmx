@@ -1,5 +1,5 @@
-import MultiplicationAdventure from "@/components/MultiplicationAdventure";
+import MultiplicationAdventureV2 from "@/components/MultiplicationAdventureV2";
 
 export default function Home() {
-  return <MultiplicationAdventure />;
+  return <MultiplicationAdventureV2 />;
 }
