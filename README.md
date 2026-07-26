@@ -21,3 +21,5 @@ pnpm dev
 ```powershell
 pnpm build:worker
 ```
+
+部署产物由 vinext 生成在 `dist/`。

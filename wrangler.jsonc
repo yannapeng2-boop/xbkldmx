@@ -1,14 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "multiplication-egg-adventure",
-  "main": ".open-next/worker.js",
   "compatibility_date": "2026-07-26",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "vinext/server/fetch-handler",
   "assets": {
-    "directory": ".open-next/assets",
+    "directory": "dist/client",
+    "not_found_handling": "none",
     "binding": "ASSETS"
   },
-  "observability": {
+  "cache": {
     "enabled": true
   }
 }
