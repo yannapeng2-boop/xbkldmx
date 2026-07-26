@@ -11,3 +11,4 @@ dist/
 tests/screenshots/
 tests/*.log
 .vinext/
+.sites/

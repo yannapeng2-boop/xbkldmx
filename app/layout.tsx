@@ -3,8 +3,8 @@ import "./globals.css";
 import "./v2.css";
 
 export const metadata: Metadata = {
-  title: "乘法蛋仔大闯关 V2",
-  description: "24关原创乘法口诀派对闯关小游戏",
+  title: "乘法蛋仔大闯关 V3",
+  description: "24关手动操控乘法闯关游戏：方向键越障，失败答题后直接进入下一关。",
 };
 
 export const viewport: Viewport = {

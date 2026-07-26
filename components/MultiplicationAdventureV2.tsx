@@ -13,8 +13,6 @@ type GameStatus =
   | "quiz"
   | "correctAction"
   | "wrongAction"
-  | "correct"
-  | "wrong"
   | "complete";
 
 type Question = {
@@ -201,6 +199,19 @@ function useSound(enabled: boolean) {
   }, [enabled]);
 }
 
+function useVoice(enabled: boolean) {
+  return useCallback((text: string) => {
+    if (!enabled || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "zh-CN";
+    speech.rate = 1.02;
+    speech.pitch = 1.18;
+    speech.volume = 1;
+    window.speechSynthesis.speak(speech);
+  }, [enabled]);
+}
+
 function Obstacle({ level, status }: { level: Level; status: GameStatus }) {
   const actionClass =
     status === "correctAction" ? "is-clearing" : status === "wrongAction" ? "is-blocking" : "";
@@ -223,8 +234,12 @@ export default function MultiplicationAdventureV2() {
   const [streak, setStreak] = useState(0);
   const [position, setPosition] = useState(START_POSITION);
   const [manualJump, setManualJump] = useState(false);
+  const [crouching, setCrouching] = useState(false);
+  const [facing, setFacing] = useState<"left" | "right">("right");
   const [question, setQuestion] = useState<Question>(() => makeQuestion(1));
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [quizFeedback, setQuizFeedback] = useState<"correct" | "wrong" | null>(null);
+  const [advanceSource, setAdvanceSource] = useState<"manual" | "quiz" | null>(null);
   const [lastResult, setLastResult] = useState<LastResult | null>(null);
   const [highestUnlocked, setHighestUnlocked] = useState(1);
   const [soundOn, setSoundOn] = useState(true);
@@ -232,7 +247,11 @@ export default function MultiplicationAdventureV2() {
   const lastTimeRef = useRef<number | null>(null);
   const jumpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const actionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const movementRef = useRef({ left: false, right: false });
+  const jumpingRef = useRef(false);
+  const collisionHandledRef = useRef(false);
   const playSound = useSound(soundOn);
+  const speak = useVoice(soundOn);
 
   const level = levels[levelId - 1];
   const chapterNumber = Math.ceil(levelId / 4);
@@ -263,8 +282,15 @@ export default function MultiplicationAdventureV2() {
     setPosition(START_POSITION);
     setQuestion(makeQuestion(safeLevel));
     setSelectedAnswer(null);
+    setQuizFeedback(null);
+    setAdvanceSource(null);
     setLastResult(null);
     setManualJump(false);
+    setCrouching(false);
+    setFacing("right");
+    movementRef.current = { left: false, right: false };
+    jumpingRef.current = false;
+    collisionHandledRef.current = false;
     setStatus("playing");
     lastTimeRef.current = null;
   }, []);
@@ -279,17 +305,82 @@ export default function MultiplicationAdventureV2() {
   const jump = useCallback(() => {
     if (status !== "playing" || manualJump) return;
     setManualJump(true);
+    setCrouching(false);
+    jumpingRef.current = true;
     playSound("jump");
     if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
-    jumpTimeoutRef.current = setTimeout(() => setManualJump(false), 520);
+    jumpTimeoutRef.current = setTimeout(() => {
+      setManualJump(false);
+      jumpingRef.current = false;
+    }, 760);
   }, [manualJump, playSound, status]);
 
-  const nudge = useCallback((direction: -1 | 1) => {
+  const setMovement = useCallback((direction: "left" | "right", active: boolean) => {
+    movementRef.current[direction] = active;
+    if (active) setFacing(direction);
+  }, []);
+
+  const pressDown = useCallback((active: boolean) => {
     if (status !== "playing") return;
-    setPosition((current) =>
-      Math.max(START_POSITION, Math.min(GATE_POSITION - 0.2, current + direction * 2.8)),
-    );
+    if (active && jumpingRef.current) {
+      if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
+      jumpingRef.current = false;
+      setManualJump(false);
+    }
+    setCrouching(active);
   }, [status]);
+
+  const awardAndAdvance = useCallback((source: "manual" | "quiz") => {
+    if (collisionHandledRef.current && source === "manual") return;
+    collisionHandledRef.current = true;
+    movementRef.current = { left: false, right: false };
+    const points = levelId * 60 + (source === "manual" ? 220 : 120) + streak * 15;
+    const nextScore = score + points;
+    const nextLevel = Math.min(MAX_LEVEL, levelId + 1);
+    setScore(nextScore);
+    setBestScore((current) => Math.max(current, nextScore));
+    setStreak((current) => current + 1);
+    setHearts((current) => Math.min(3, current + 1));
+    setHighestUnlocked((current) => Math.max(current, nextLevel));
+    setLastResult({ question, selected: question.answer, points, fromLevel: levelId, toLevel: nextLevel });
+    setAdvanceSource(source);
+    setStatus("correctAction");
+    playSound(levelId === MAX_LEVEL ? "finish" : "correct");
+    speak(
+      levelId === MAX_LEVEL
+        ? "恭喜你，二十四关全部通关！"
+        : source === "manual"
+          ? ["太棒了，闯关成功！", "漂亮，顺利过关！", "太厉害了，成功越过障碍！"][levelId % 3]
+          : "回答正确",
+    );
+    if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+    actionTimeoutRef.current = setTimeout(() => {
+      if (levelId === MAX_LEVEL) {
+        setStatus("complete");
+      } else {
+        beginLevel(nextLevel);
+      }
+    }, source === "manual" ? 1450 : 900);
+  }, [beginLevel, levelId, playSound, question, score, speak, streak]);
+
+  const failObstacle = useCallback(() => {
+    if (collisionHandledRef.current) return;
+    collisionHandledRef.current = true;
+    movementRef.current = { left: false, right: false };
+    setHearts((current) => Math.max(0, current - 1));
+    setStreak(0);
+    setStatus("wrongAction");
+    playSound("wrong");
+    speak("闯关失败，请回答乘法题");
+    if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+    actionTimeoutRef.current = setTimeout(() => {
+      setPosition(GATE_POSITION - 5);
+      setQuestion(makeQuestion(levelId));
+      setSelectedAnswer(null);
+      setQuizFeedback(null);
+      setStatus("quiz");
+    }, 850);
+  }, [levelId, playSound, speak]);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -299,11 +390,16 @@ export default function MultiplicationAdventureV2() {
       const delta = Math.min(time - lastTimeRef.current, 40);
       lastTimeRef.current = time;
       setPosition((current) => {
-        const next = current + delta * (0.009 + levelId * 0.00008);
-        if (next >= GATE_POSITION) {
-          setStatus("quiz");
-          setSelectedAnswer(null);
-          return GATE_POSITION;
+        const direction = Number(movementRef.current.right) - Number(movementRef.current.left);
+        if (direction === 0) return current;
+        const next = Math.max(START_POSITION, Math.min(94, current + direction * delta * 0.025));
+        if (direction > 0 && current < GATE_POSITION && next >= GATE_POSITION) {
+          if (jumpingRef.current) {
+            awardAndAdvance("manual");
+            return GATE_POSITION + 3;
+          }
+          failObstacle();
+          return GATE_POSITION - 1;
         }
         return next;
       });
@@ -311,20 +407,47 @@ export default function MultiplicationAdventureV2() {
     };
     frame = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frame);
-  }, [levelId, status]);
+  }, [awardAndAdvance, failObstacle, status]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") nudge(-1);
-      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") nudge(1);
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        setMovement("left", true);
+      }
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        setMovement("right", true);
+      }
       if (event.key === " " || event.key === "ArrowUp" || event.key.toLowerCase() === "w") {
         event.preventDefault();
         jump();
       }
+      if (event.key === "ArrowDown" || event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        pressDown(true);
+      }
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") setMovement("left", false);
+      if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") setMovement("right", false);
+      if (event.key === "ArrowDown" || event.key.toLowerCase() === "s") pressDown(false);
+    };
+    const releaseControls = () => {
+      movementRef.current = { left: false, right: false };
+      setCrouching(false);
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [jump, nudge]);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("pointerup", releaseControls);
+    window.addEventListener("blur", releaseControls);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("pointerup", releaseControls);
+      window.removeEventListener("blur", releaseControls);
+    };
+  }, [jump, pressDown, setMovement]);
 
   useEffect(() => () => {
     if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
@@ -332,35 +455,21 @@ export default function MultiplicationAdventureV2() {
   }, []);
 
   const chooseAnswer = (answer: number) => {
-    if (status !== "quiz") return;
+    if (status !== "quiz" || quizFeedback) return;
     setSelectedAnswer(answer);
     if (answer === question.answer) {
-      const points = levelId * 60 + 100 + streak * 15;
-      const nextScore = score + points;
-      setScore(nextScore);
-      setBestScore((current) => Math.max(current, nextScore));
-      setStreak((current) => current + 1);
-      setHearts((current) => Math.min(3, current + 1));
-      setHighestUnlocked((current) => Math.max(current, Math.min(MAX_LEVEL, levelId + 1)));
-      setLastResult({ question, selected: answer, points, fromLevel: levelId, toLevel: Math.min(MAX_LEVEL, levelId + 1) });
-      setStatus("correctAction");
-      playSound(levelId === MAX_LEVEL ? "finish" : "correct");
-      actionTimeoutRef.current = setTimeout(() => {
-        setStatus(levelId === MAX_LEVEL ? "complete" : "correct");
-      }, 1750);
+      setQuizFeedback("correct");
+      awardAndAdvance("quiz");
     } else {
-      const fallbackLevel = Math.max(1, levelId - 1);
-      setHearts((current) => (current <= 1 ? 3 : current - 1));
-      setStreak(0);
-      setLastResult({ question, selected: answer, points: 0, fromLevel: levelId, toLevel: fallbackLevel });
-      setStatus("wrongAction");
+      setQuizFeedback("wrong");
       playSound("wrong");
+      speak("回答错误，再试一次");
+      if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
       actionTimeoutRef.current = setTimeout(() => {
-        setLevelId(fallbackLevel);
-        setPosition(START_POSITION);
-        setQuestion(makeQuestion(fallbackLevel));
-        setStatus("wrong");
-      }, 1650);
+        setQuestion(makeQuestion(levelId));
+        setSelectedAnswer(null);
+        setQuizFeedback(null);
+      }, 850);
     }
   };
 
@@ -384,7 +493,7 @@ export default function MultiplicationAdventureV2() {
       <header className="v2-topbar">
         <div className="v2-brand">
           <div className="v2-brand-egg" aria-hidden="true">×</div>
-          <div><p>24 关乘法冒险 · V2</p><h1>乘法蛋仔大闯关</h1></div>
+          <div><p>24 关手动操控冒险 · V3</p><h1>乘法蛋仔大闯关</h1></div>
         </div>
         <button className="v2-icon-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "关闭音效" : "开启音效"}>
           {soundOn ? "🔊" : "🔇"}
@@ -414,13 +523,17 @@ export default function MultiplicationAdventureV2() {
             {particleSymbols.map((symbol, index) => <i key={`${symbol}-${index}`}>{symbol}</i>)}
           </div>
           <div className="v2-action-message" aria-live="polite">
-            {status === "correctAction" && <span className="success">回答正确！起跳——越过障碍！</span>}
-            {status === "wrongAction" && <span className="error">答案不对！掉头返回上一关</span>}
+            {status === "correctAction" && (
+              <span className="success">
+                {advanceSource === "manual" ? "闯关成功！马上进入下一关" : "回答正确！马上进入下一关"}
+              </span>
+            )}
+            {status === "wrongAction" && <span className="error">撞到障碍！乘法挑战准备中…</span>}
           </div>
           <div className="v2-finish-flag" aria-hidden="true"><span>🏁</span></div>
           <Obstacle level={level} status={status} />
           <div
-            className={`v2-runner ${manualJump ? "manual-jump" : ""} ${status === "correctAction" ? "success-jump" : ""} ${status === "wrongAction" ? "wrong-return" : ""}`}
+            className={`v2-runner ${manualJump ? "manual-jump" : ""} ${crouching ? "is-crouching" : ""} ${facing === "left" ? "facing-left" : ""} ${status === "correctAction" ? "success-jump" : ""} ${status === "wrongAction" ? "collision-hit" : ""}`}
             style={{ left: `${position}%` }}
             aria-label="正在闯关的原创蛋仔"
           >
@@ -436,18 +549,40 @@ export default function MultiplicationAdventureV2() {
           </div>
           <div className="v2-track" aria-hidden="true">{Array.from({ length: 12 }, (_, index) => <i key={index} />)}</div>
           <div className="v2-course-hint">
-            {status === "playing" && `前方是${level.obstacleLabel}，准备答题！`}
-            {status === "quiz" && "闯关暂停 · 回答乘法口诀"}
-            {!["playing", "quiz"].includes(status) && !status.endsWith("Action") && "答对起跳，答错掉头返回"}
+            {status === "playing" && `方向键控制移动，上键跳过${level.obstacleLabel}`}
+            {status === "quiz" && "碰撞失败 · 回答乘法口诀即可进入下一关"}
+            {status === "complete" && "二十四关全部完成！"}
           </div>
         </div>
 
-        <div className="v2-controls">
-          <button type="button" onPointerDown={() => nudge(-1)} aria-label="向左移动">←</button>
-          <button className="jump" type="button" onPointerDown={jump}>跳一跳</button>
-          <button type="button" onPointerDown={() => nudge(1)} aria-label="向右移动">→</button>
+        <div className="v3-controls" aria-label="方向控制">
+          <button className="up" type="button" onPointerDown={jump} aria-label="向上跳跃">↑<small>跳跃</small></button>
+          <button
+            className="left"
+            type="button"
+            onPointerDown={() => setMovement("left", true)}
+            onPointerUp={() => setMovement("left", false)}
+            onPointerLeave={() => setMovement("left", false)}
+            aria-label="向左移动"
+          >←</button>
+          <button
+            className="down"
+            type="button"
+            onPointerDown={() => pressDown(true)}
+            onPointerUp={() => pressDown(false)}
+            onPointerLeave={() => pressDown(false)}
+            aria-label="向下蹲下"
+          >↓<small>蹲下</small></button>
+          <button
+            className="right"
+            type="button"
+            onPointerDown={() => setMovement("right", true)}
+            onPointerUp={() => setMovement("right", false)}
+            onPointerLeave={() => setMovement("right", false)}
+            aria-label="向右移动"
+          >→</button>
         </div>
-        <p className="v2-keyboard-tip">电脑：A / D 移动，空格跳跃　·　手机：使用下方按钮</p>
+        <p className="v2-keyboard-tip">电脑：← → 前进后退，↑ 跳跃，↓ 蹲下/快速落地　·　也支持 W A S D</p>
       </section>
 
       <section className="v2-route" aria-label="24关进度">
@@ -476,7 +611,7 @@ export default function MultiplicationAdventureV2() {
             <div className="v2-start-mascot" aria-hidden="true">×</div>
             <span className="v2-eyebrow">六大主题 · 二十四关</span>
             <h2 id="v2-start-title">选择关卡，继续冒险</h2>
-            <p>答对后蛋仔会真正跳过不同障碍；答错会掉头跑回上一关。通关记录保存在当前设备。</p>
+            <p>用方向键亲自控制蛋仔。跳过障碍直接语音庆祝并进入下一关；碰撞失败时，答对一道随机乘法题也能继续前进。</p>
             <div className="v2-level-picker">
               {levels.map((item) => (
                 <button
@@ -509,36 +644,28 @@ export default function MultiplicationAdventureV2() {
             </div>
             <div className="v2-answer-grid">
               {question.options.map((option) => (
-                <button key={option} type="button" data-correct={option === question.answer ? "true" : "false"} onClick={() => chooseAnswer(option)}>{option}</button>
+                <button
+                  key={option}
+                  type="button"
+                  data-correct={option === question.answer ? "true" : "false"}
+                  data-selected={selectedAnswer === option ? "true" : "false"}
+                  className={
+                    selectedAnswer === option && quizFeedback
+                      ? quizFeedback
+                      : ""
+                  }
+                  disabled={Boolean(quizFeedback)}
+                  onClick={() => chooseAnswer(option)}
+                >{option}</button>
               ))}
             </div>
-            <p className="v2-quiz-tip">答对：跳过障碍　·　答错：返回上一关</p>
-          </section>
-        </div>
-      )}
-
-      {status === "correct" && lastResult && (
-        <div className="v2-modal-backdrop">
-          <section className="v2-modal v2-result success" role="dialog" aria-modal="true">
-            <div className="v2-result-icon">↗</div>
-            <span className="v2-eyebrow">漂亮地跳过去了！</span>
-            <h2>{lastResult.question.a} × {lastResult.question.b} = {lastResult.question.answer}</h2>
-            <p>越过第 {lastResult.fromLevel} 关，获得 <b>+{lastResult.points}</b> 分。下一关有新的背景和障碍。</p>
-            <button className="v2-primary-button" type="button" onClick={() => beginLevel(lastResult.toLevel)}>进入第 {lastResult.toLevel} 关</button>
-          </section>
-        </div>
-      )}
-
-      {status === "wrong" && lastResult && (
-        <div className="v2-modal-backdrop">
-          <section className="v2-modal v2-result error" role="dialog" aria-modal="true">
-            <div className="v2-result-icon">↩</div>
-            <span className="v2-eyebrow">已经跑回上一关</span>
-            <h2>{lastResult.question.a} × {lastResult.question.b} = {lastResult.question.answer}</h2>
-            <p>你选择了 {lastResult.selected}。{lastResult.fromLevel === 1 ? "第一关重新开始。" : `已从第 ${lastResult.fromLevel} 关返回第 ${lastResult.toLevel} 关。`}</p>
-            <button className="v2-primary-button" type="button" onClick={() => beginLevel(lastResult.toLevel)}>
-              {lastResult.toLevel === 1 ? "重新挑战第一关" : `从第 ${lastResult.toLevel} 关重新出发`}
-            </button>
+            <p className={`v2-quiz-tip ${quizFeedback || ""}`} aria-live="polite">
+              {quizFeedback === "correct"
+                ? "回答正确，正在进入下一关…"
+                : quizFeedback === "wrong"
+                  ? "回答错误，马上换一道随机题再试"
+                  : "答对后直接进入下一关，不再出现成功页面"}
+            </p>
           </section>
         </div>
       )}
