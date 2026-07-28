@@ -302,6 +302,17 @@ export default function MultiplicationAdventureV2() {
     beginLevel(highestUnlocked);
   };
 
+  const restartRun = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+    if (actionTimeoutRef.current) clearTimeout(actionTimeoutRef.current);
+    setScore(0);
+    setHearts(3);
+    setStreak(0);
+    beginLevel(1);
+  };
+
   const jump = useCallback(() => {
     if (status !== "playing" || manualJump) return;
     setManualJump(true);
@@ -493,11 +504,16 @@ export default function MultiplicationAdventureV2() {
       <header className="v2-topbar">
         <div className="v2-brand">
           <div className="v2-brand-egg" aria-hidden="true">×</div>
-          <div><p>24 关手动操控冒险 · V3</p><h1>乘法蛋仔大闯关</h1></div>
+          <div><p>儿童乘法闯关游戏</p><h1>希希乘法大冒险</h1></div>
         </div>
-        <button className="v2-icon-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "关闭音效" : "开启音效"}>
-          {soundOn ? "🔊" : "🔇"}
-        </button>
+        <div className="v2-header-actions">
+          <button className="v2-restart-button" type="button" onClick={restartRun} aria-label="从第一关重新开始">
+            <span aria-hidden="true">↻</span><b>重新开始</b>
+          </button>
+          <button className="v2-icon-button" type="button" onClick={() => setSoundOn((value) => !value)} aria-label={soundOn ? "关闭音效" : "开启音效"}>
+            {soundOn ? "🔊" : "🔇"}
+          </button>
+        </div>
       </header>
 
       <section className="v2-dashboard" aria-label="游戏信息">

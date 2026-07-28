@@ -6,18 +6,41 @@
 
 * { box-sizing: border-box; }
 
+html {
+  width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+  background: #edf8ff;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
+  width: 100%;
+  min-height: 100%;
   margin: 0;
   color: var(--v2-ink);
   background: #edf8ff;
   font-family: "Arial Rounded MT Bold", "Microsoft YaHei", system-ui, sans-serif;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  -webkit-font-smoothing: antialiased;
 }
 
-button { font: inherit; }
+button {
+  font: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
 
 .v2-shell {
   min-height: 100vh;
-  padding: 18px clamp(12px, 2vw, 28px) 38px;
+  min-height: 100dvh;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(clamp(12px, 2vw, 28px), env(safe-area-inset-right))
+    max(38px, env(safe-area-inset-bottom))
+    max(clamp(12px, 2vw, 28px), env(safe-area-inset-left));
   overflow: hidden;
   background:
     radial-gradient(circle at 15% 0%, color-mix(in srgb, var(--v2-accent, #55d8d0) 22%, transparent), transparent 35%),
@@ -57,6 +80,23 @@ button { font: inherit; }
 }
 .v2-brand p { margin: 0; color: #6f83a0; font-size: 11px; font-weight: 900; letter-spacing: 0.12em; }
 .v2-brand h1 { margin: 2px 0 0; font-size: clamp(21px, 2.4vw, 31px); line-height: 1; }
+.v2-header-actions { display:flex; align-items:center; gap:8px; }
+.v2-restart-button {
+  min-width: 112px;
+  height: 46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  border:0;
+  border-radius:16px;
+  color:#4f5fc5;
+  background:#fff;
+  box-shadow:0 7px 18px rgba(50,75,105,.14);
+  cursor:pointer;
+}
+.v2-restart-button span { font-size:22px; line-height:1; }
+.v2-restart-button b { font-size:13px; }
 .v2-icon-button {
   width: 46px; height: 46px; border: 0; border-radius: 16px; background: #fff;
   box-shadow: 0 7px 18px rgba(50, 75, 105, 0.14); cursor: pointer; font-size: 22px;
@@ -393,6 +433,11 @@ button { font: inherit; }
 .v2-modal-backdrop {
   position:fixed; z-index:100; inset:0; display:grid; place-items:center; padding:18px;
   background:rgba(20,39,64,.52); backdrop-filter:blur(10px); animation:v2-fade .25s ease-out;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(18px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(18px, env(safe-area-inset-left));
 }
 .v2-modal {
   width:min(510px,100%); max-height:92vh; overflow:auto; padding:28px;
@@ -521,11 +566,19 @@ button { font: inherit; }
 button:focus-visible { outline:4px solid rgba(255,202,72,.9); outline-offset:3px; }
 
 @media (max-width: 760px) {
-  .v2-shell { padding:10px 8px 28px; }
+  .v2-shell {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(28px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
   .v2-topbar { min-height:50px; }
   .v2-brand-egg { width:43px; }
   .v2-brand p { display:none; }
-  .v2-brand h1 { font-size:20px; }
+  .v2-brand h1 { font-size:19px; }
+  .v2-restart-button { min-width:46px; width:46px; padding:0; }
+  .v2-restart-button b { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
   .v2-icon-button { width:42px;height:42px; }
   .v2-dashboard { grid-template-columns:repeat(2,1fr); gap:6px; }
   .v2-stat { padding:7px 11px; border-radius:15px; }
@@ -537,7 +590,7 @@ button:focus-visible { outline:4px solid rgba(255,202,72,.9); outline-offset:3px
   .v2-runner { width:60px;height:83px;bottom:20%; }
   .v2-egg-face { top:26px; }.v2-egg-band{bottom:12px}.v2-egg-arm{top:37px}
   .v2-finish-flag { font-size:30px; }
-  .v2-course-hint { bottom:2.5%; font-size:9px; }
+  .v2-course-hint { bottom:2.5%; font-size:11px; }
   .v2-route { padding:12px 11px 17px; }
   .v2-route-grid { grid-template-columns:repeat(12,1fr); row-gap:8px; }
   .v2-route-line { display:none; }
@@ -547,7 +600,15 @@ button:focus-visible { outline:4px solid rgba(255,202,72,.9); outline-offset:3px
   .v2-action-message { top:18%; }
   .v2-obstacle b { bottom:-25px; font-size:8px; }
   .v3-controls { grid-template-columns:repeat(3,58px); }
-  .v3-controls button { width:58px; height:46px; }
+  .v3-controls button { width:58px; height:50px; }
+  .v2-keyboard-tip { font-size:11px; line-height:1.5; padding-inline:8px; }
+}
+
+@media (max-width: 390px) {
+  .v2-brand h1 { font-size:17px; }
+  .v2-brand-egg { width:40px; border-width:3px; }
+  .v2-header-actions { gap:5px; }
+  .v2-restart-button,.v2-icon-button { width:40px; min-width:40px; height:40px; border-radius:13px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

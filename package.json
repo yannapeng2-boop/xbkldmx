@@ -2,9 +2,13 @@
   "name": "multiplication-egg-adventure",
   "version": "1.0.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "start": "next start",
     "build:worker": "vinext build",
     "preview": "wrangler dev --config dist/server/wrangler.json",
     "typecheck": "tsc --noEmit",

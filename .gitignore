@@ -12,3 +12,6 @@ tests/screenshots/
 tests/*.log
 .vinext/
 .sites/
+.vercel/
+.env*
+!.env.example

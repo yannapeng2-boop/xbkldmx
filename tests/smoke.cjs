@@ -7,7 +7,7 @@ let activeBrowser;
 
 async function startGame(page) {
   await page.goto(baseUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: "乘法蛋仔大闯关" }).waitFor();
+  await page.getByRole("heading", { name: "希希乘法大冒险" }).waitFor();
   const startButton = page.locator(".v2-start-panel .v2-primary-button");
   await page.waitForFunction(() => {
     const button = document.querySelector(".v2-start-panel .v2-primary-button");
@@ -82,6 +82,12 @@ async function spokenLines(page) {
 
   await startGame(page);
   console.log("STEP: V3 game started");
+  await page.getByRole("button", { name: "从第一关重新开始" }).click();
+  await page.waitForFunction(() => {
+    const stat = document.querySelector(".v2-stat.primary strong");
+    return stat && stat.textContent.trim().startsWith("1");
+  });
+  console.log("STEP: persistent restart button verified");
 
   await page.keyboard.down("ArrowDown");
   await page.locator(".v2-runner.is-crouching").waitFor();
@@ -146,17 +152,19 @@ async function spokenLines(page) {
     fullPage: true,
   });
 
-  const mobile = await browser.newPage({
+  const iphoneContext = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 1,
     isMobile: true,
     hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Version/18.5 Mobile/15E148 Safari/604.1",
   });
+  const mobile = await iphoneContext.newPage();
   mobile.on("pageerror", (error) => errors.push(`mobile pageerror: ${error.message}`));
   await mobile.goto(baseUrl, { waitUntil: "domcontentloaded" });
-  await mobile.getByRole("heading", { name: "乘法蛋仔大闯关" }).waitFor();
+  await mobile.getByRole("heading", { name: "希希乘法大冒险" }).waitFor();
   await mobile.screenshot({
-    path: path.join(screenshots, "v3-05-start-mobile.png"),
+    path: path.join(screenshots, "h5-iphone-safari.png"),
     fullPage: true,
   });
   const mobileDirectionButtons = await mobile.locator(".v3-controls button").count();
@@ -166,14 +174,69 @@ async function spokenLines(page) {
   const hasHorizontalOverflow = await mobile.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );
-  if (hasHorizontalOverflow) throw new Error("Mobile layout has horizontal overflow");
+  if (hasHorizontalOverflow) throw new Error("iPhone layout has horizontal overflow");
+  const startButtonBox = await mobile.locator(".v2-start-panel .v2-primary-button").boundingBox();
+  if (!startButtonBox || startButtonBox.height < 44) {
+    throw new Error(`iPhone start button is too small: ${JSON.stringify(startButtonBox)}`);
+  }
+  await iphoneContext.close();
+
+  const androidContext = await browser.newContext({
+    viewport: { width: 412, height: 915 },
+    deviceScaleFactor: 1,
+    isMobile: true,
+    hasTouch: true,
+    userAgent: "Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 Chrome/138.0.0.0 Mobile Safari/537.36",
+  });
+  const android = await androidContext.newPage();
+  await android.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await android.getByRole("heading", { name: "希希乘法大冒险" }).waitFor();
+  const androidOverflow = await android.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+  );
+  if (androidOverflow) throw new Error("Android layout has horizontal overflow");
+  await androidContext.close();
+
+  const wechatContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 MicroMessenger/8.0.54",
+  });
+  const wechat = await wechatContext.newPage();
+  await wechat.goto(baseUrl, { waitUntil: "domcontentloaded" });
+  await wechat.getByRole("heading", { name: "希希乘法大冒险" }).waitFor();
+  const metadata = await wechat.evaluate(() => ({
+    title: document.title,
+    description: document.querySelector('meta[name="description"]')?.content,
+    ogTitle: document.querySelector('meta[property="og:title"]')?.content,
+    ogDescription: document.querySelector('meta[property="og:description"]')?.content,
+    ogImage: document.querySelector('meta[property="og:image"]')?.content,
+    viewport: document.querySelector('meta[name="viewport"]')?.content,
+    manifest: document.querySelector('link[rel="manifest"]')?.href,
+  }));
+  if (metadata.title !== "希希乘法大冒险 - 儿童乘法闯关游戏") {
+    throw new Error(`Unexpected title: ${metadata.title}`);
+  }
+  if (metadata.description !== "有趣的乘法闯关小游戏，帮助孩子快乐学习九九乘法表。") {
+    throw new Error(`Unexpected description: ${metadata.description}`);
+  }
+  if (!metadata.ogTitle || !metadata.ogDescription || !metadata.ogImage?.includes("opengraph-image")) {
+    throw new Error(`WeChat sharing metadata is incomplete: ${JSON.stringify(metadata)}`);
+  }
+  if (!metadata.viewport?.includes("viewport-fit=cover") || !metadata.manifest) {
+    throw new Error(`Mobile H5 metadata is incomplete: ${JSON.stringify(metadata)}`);
+  }
+  await wechatContext.close();
   if (errors.length) throw new Error(errors.join("\n"));
 
+  console.log("PASS: persistent restart and child-sized buttons");
   console.log("PASS: four-direction controls and crouch");
   console.log("PASS: manual clear celebrates by voice and skips the legacy success page");
   console.log("PASS: collision opens a random multiplication quiz");
   console.log("PASS: wrong retry and correct-answer voice automatically advance");
-  console.log("PASS: all 24 levels and mobile layout");
+  console.log("PASS: all 24 levels, iPhone Safari, Android Chrome and WeChat layouts");
+  console.log("PASS: SEO, favicon, manifest and WeChat sharing metadata");
   await browser.close();
   activeBrowser = null;
 })().catch(async (error) => {
