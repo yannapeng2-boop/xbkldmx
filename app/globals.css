@@ -20,7 +20,7 @@ body {
   margin: 0;
   color: var(--ink);
   font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", system-ui, sans-serif;
-  background: #6bd9f3 url("/assets/sky-course.png") center / cover fixed;
+  background: #6bd9f3 var(--app-sky-background) center / cover fixed;
   overflow-x: hidden;
 }
 
@@ -229,7 +229,7 @@ footer {
   border-radius: 22px;
   background:
     linear-gradient(180deg, rgba(93, 218, 247, .08) 0%, rgba(47, 206, 232, .2) 62%, rgba(58, 180, 212, .72) 100%),
-    url("/assets/sky-course.png") center 52% / cover;
+    var(--app-sky-background) center 52% / cover;
 }
 
 .course::after {

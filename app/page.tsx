@@ -1,5 +1,5 @@
-import MultiplicationAdventureV2 from "@/components/MultiplicationAdventureV2";
+import LearningAdventureV4 from "@/components/LearningAdventureV4";
 
 export default function Home() {
-  return <MultiplicationAdventureV2 />;
+  return <LearningAdventureV4 />;
 }

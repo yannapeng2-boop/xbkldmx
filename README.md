@@ -1,33 +1,42 @@
-# 希希乘法大冒险
+# 希宝快乐学习大冒险 V4
 
-适合儿童、家长和老师通过手机浏览器访问的公开 H5 乘法闯关游戏。
+适合儿童、家长和老师通过手机浏览器访问的公开 H5 学习闯关游戏。玩家手动控制原创圆蛋角色完成 24 关；失败后通过数学或古诗词“知识复活题”继续冒险。
 
 ## 技术栈
 
 - Next.js 16（App Router）
 - React 19
 - TypeScript
-- Node.js 24 LTS
-- 纯浏览器游戏逻辑，无数据库、无登录、无 App 安装
-- 支持 iPhone Safari、Android Chrome 和微信内置浏览器
+- Node.js 24
+- pnpm 11
+- Playwright 浏览器验收
+- 无登录、无数据库、无儿童个人信息上传
 
-## 游戏体验
+## V4功能
 
-- 24 个原创关卡与多种障碍
-- 方向键或触屏按钮控制移动、跳跃和蹲下
-- 手动越障后语音庆祝并自动进入下一关
-- 碰撞失败后通过随机乘法题继续闯关
-- 包含开始、重新开始、得分、生命值、连对次数和闯关进度
-- 本机浏览器保存最高解锁关卡与历史最高分
+- 一至六年级、上册/下册/综合复习
+- 九九乘法、100以内加减法、课内古诗词和综合挑战
+- 轻松模式：复活题答对后直接进入下一关
+- 挑战模式：复活题答对后从本关检查点继续
+- 24个原创障碍关卡、6个主题场景、3个阶段挑战关
+- 键盘和手机触控，支持持续按压
+- 正确、错误、成功和最终通关反馈
+- 浏览器语音合成不可用时自动保留文字反馈
+- 本机保存关卡、星星、学习统计和错题
+- V3最高关卡和最高分自动迁移
+- iPhone Safari、Android Chrome和微信浏览器布局适配
+
+## 古诗词题库说明
+
+题库文件位于 `lib/poetry-bank.ts`，当前包含一年级至六年级候选课内古诗词数据。每条记录包含年级、册次、栏目、篇名、作者、朝代、上下句、教材版本和复核状态。
+
+古诗原文属于公共领域内容；教材册次、栏目和2024修订版异文仍应由教材持有人在公开发布前完成第二轮人工复核。未完成复核的记录会保留 `needs-textbook-review` 状态，不能把自动化结构校验等同于教材人工核验。
 
 ## 本地启动
 
-项目使用 pnpm 锁定依赖版本：
-
 ```powershell
-corepack enable
 pnpm install
-npm run dev
+pnpm run dev
 ```
 
 浏览器打开：
@@ -36,84 +45,70 @@ npm run dev
 http://localhost:3000
 ```
 
-## 生产构建
+## 类型检查和构建
 
 ```powershell
-npm run build
-npm run start
+pnpm run typecheck
+pnpm run build
+pnpm run start
 ```
 
-`node_modules`、`.next` 和 `.vercel` 已加入 `.gitignore`，不会上传到 Git 或 Vercel。不要手动提交本地依赖目录。
+## 验收测试
 
-## 部署到 Vercel
+```powershell
+pnpm run test:v4
+pnpm run test:v4:levels
+```
 
-### 方式一：连接 Git 仓库
+浏览器验收默认访问 `http://localhost:3100`。测试前先在3100端口启动生产版本，或通过 `GAME_URL` 指定地址。
 
-1. 把项目推送到你自己的 GitHub、GitLab 或 Bitbucket 仓库。
-2. 登录 Vercel，点击 **Add New > Project**。
-3. 导入该仓库。
-4. Framework Preset 选择 **Next.js**。
-5. Node.js Version 使用 **24.x**（项目也已通过 `package.json` 固定）。
-6. Build Command 使用 `npm run build`。
-7. 不设置 Output Directory。
-8. 添加环境变量：
+逐关测试可以使用：
+
+```powershell
+$env:START_LEVEL="1"
+$env:END_LEVEL="12"
+pnpm run test:v4:levels
+```
+
+## 部署到Vercel
+
+1. 将代码推送到自己的GitHub、GitLab或Bitbucket私有仓库。
+2. 在Vercel选择 **Add New > Project** 并导入仓库。
+3. Framework Preset选择 **Next.js**。
+4. Build Command使用 `pnpm run build` 或 `npm run build`。
+5. 不手动填写Output Directory。
+6. 设置环境变量：
 
 ```text
 NEXT_PUBLIC_SITE_URL=https://你的正式域名
 ```
 
-9. 点击 Deploy。
+7. 完成Preview验收后再发布Production。
 
-### 方式二：Vercel CLI
+长期发给学生和家长时，建议在Vercel的 **Settings > Domains** 绑定自定义域名。不要把旧的 `chatgpt.site` 地址作为最终传播地址。
 
-```powershell
-npm install -g vercel
-vercel link
-vercel deploy
-vercel deploy --prod
-```
+## 部署到 GitHub Pages
 
-首次部署后，Vercel 会提供一个 `*.vercel.app` 地址。长期发送给学生和家长时，建议在 Vercel 项目的 **Settings > Domains** 绑定自定义域名。
+仓库已经包含 `.github/workflows/deploy-pages.yml`。推送到 `main` 后，GitHub Actions 会使用 Node.js 24 和 pnpm 11 构建静态版本，并发布 `out` 目录。
 
-## 正式网址填写位置
-
-在 Vercel 项目的 **Settings > Environment Variables** 中新增：
+当前仓库的公开地址：
 
 ```text
-NEXT_PUBLIC_SITE_URL=https://你的正式域名
+https://yannapeng2-boop.github.io/xbkldmx/
 ```
 
-Production、Preview、Development 三个环境都可以勾选。修改后重新部署一次，使 canonical、Open Graph、站点地图和微信分享地址更新为正式网址。
+首次使用时，需要在 GitHub 仓库的 **Settings > Pages > Build and deployment** 中把 Source 选择为 **GitHub Actions**。本机启动不会启用静态导出，原有桌面快捷方式仍使用 `http://localhost:3000`。
 
-本地可复制 `.env.example` 为 `.env.local`：
+## 微信分享
 
-```powershell
-Copy-Item .env.example .env.local
-```
+项目已经配置网页标题、描述、Open Graph图片、favicon和Web App Manifest。普通链接可以在微信中打开并读取基础分享信息。
 
-## SEO 与分享
+如需强制自定义微信分享卡片行为，还需要公众号、已备案或可配置的业务域名、微信JS-SDK签名服务等外部条件，本项目不会在未具备这些条件时承诺完整微信分享定制。
 
-- 网页标题：希希乘法大冒险 - 儿童乘法闯关游戏
-- 网页描述：有趣的乘法闯关小游戏，帮助孩子快乐学习九九乘法表。
-- Open Graph 和大图分享卡片
-- favicon、Apple 主屏幕图标、Web App Manifest
-- robots.txt、sitemap.xml、canonical 地址
+## 隐私
 
-微信分享卡片主要读取网页的 Open Graph 信息。正式域名部署后，如果微信仍显示旧图，通常是微信缓存，可更换一次带参数的链接测试，例如：
-
-```text
-https://你的正式域名/?v=1
-```
-
-## 手机验收
-
-1. 确认手机和测试电脑能访问部署网址。
-2. iPhone Safari：测试开始、左右移动、跳跃、蹲下、音效、重新开始和旋转屏幕。
-3. Android Chrome：重复上述流程，确认没有横向滚动。
-4. 微信：把链接发到“文件传输助手”，直接在微信内打开并测试触屏按钮。
-5. 分别测试一关手动越障和一次碰撞答题。
-6. 返回微信聊天，确认分享标题、描述和预览图正常。
-
-## 资源说明
-
-游戏图片全部通过 `/public` 或 Next.js Metadata 文件约定引用，不使用本机绝对路径。分享图和图标位于 `app/`，由 Next.js 自动生成对应资源地址。
+- 不要求登录
+- 不收集姓名、手机号或班级
+- 学习记录保存在当前浏览器的 `localStorage`
+- 不建立公开儿童排行榜
+- 清除浏览器数据会同时清除本机游戏进度

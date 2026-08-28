@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { withBasePath } from "@/lib/site";
 
 const MAX_LEVEL = 24;
 const GATE_POSITION = 68;
@@ -51,42 +52,42 @@ const chapters = [
     name: "云端嘉年华",
     icon: "☁",
     world: "cloud",
-    background: "/assets/sky-course.png",
+    background: withBasePath("/assets/sky-course.png"),
     colors: [["#4ddad0", "#6f63ed"], ["#ffcb57", "#55c9f2"], ["#ff7898", "#8d6cf0"], ["#65dca8", "#ffad55"]],
   },
   {
     name: "糖果乐园",
     icon: "◆",
     world: "candy",
-    background: "/assets/theme-candy-v2.png",
+    background: withBasePath("/assets/theme-candy-v2.png"),
     colors: [["#ff6f91", "#ffa94d"], ["#a66cf4", "#ff7aa2"], ["#45d2bd", "#ff9b5f"], ["#f0a43a", "#e95d87"]],
   },
   {
     name: "泡泡海湾",
     icon: "◌",
     world: "ocean",
-    background: "/assets/theme-ocean-v2.png",
+    background: withBasePath("/assets/theme-ocean-v2.png"),
     colors: [["#32c9e8", "#6a7df1"], ["#ff7b8e", "#33c8c2"], ["#5ba9f5", "#a86ce8"], ["#16c7b9", "#ffb44f"]],
   },
   {
     name: "奇趣丛林",
     icon: "♣",
     world: "jungle",
-    background: "/assets/theme-jungle-v2.png",
+    background: withBasePath("/assets/theme-jungle-v2.png"),
     colors: [["#69c94b", "#f2aa3c"], ["#b066e4", "#50bd69"], ["#2dbd99", "#e2b747"], ["#ef8a3f", "#7c62d9"]],
   },
   {
     name: "星际跳台",
     icon: "✦",
     world: "space",
-    background: "/assets/theme-space-v2.png",
+    background: withBasePath("/assets/theme-space-v2.png"),
     colors: [["#7068f2", "#ff7d65"], ["#2fbde6", "#985fe7"], ["#ffb447", "#536ce7"], ["#e868bb", "#46cce4"]],
   },
   {
     name: "霓虹终极秀",
     icon: "◈",
     world: "neon",
-    background: "/assets/theme-neon-v2.png",
+    background: withBasePath("/assets/theme-neon-v2.png"),
     colors: [["#18d7ef", "#f352c6"], ["#b968ff", "#42e5b3"], ["#ffbd36", "#ff4fa6"], ["#38e8ed", "#8964ff"]],
   },
 ] as const;

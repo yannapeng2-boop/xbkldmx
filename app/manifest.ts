@@ -1,21 +1,23 @@
 import type { MetadataRoute } from "next";
-import { SITE_DESCRIPTION } from "@/lib/site";
+import { SITE_DESCRIPTION, withBasePath } from "@/lib/site";
+
+export const dynamic = "force-static";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "希希乘法大冒险 - 儿童乘法闯关游戏",
-    short_name: "希希乘法大冒险",
+    name: "希宝快乐学习大冒险 - 儿童数学古诗词闯关游戏",
+    short_name: "希宝学习大冒险",
     description: SITE_DESCRIPTION,
-    start_url: "/",
+    start_url: withBasePath("/"),
     display: "standalone",
     orientation: "any",
     background_color: "#edf8ff",
-    theme_color: "#36c6e8",
+    theme_color: "#42cdb7",
     lang: "zh-CN",
     categories: ["education", "games", "kids"],
     icons: [
       {
-        src: "/icon.png",
+        src: withBasePath("/icon.png"),
         sizes: "512x512",
         type: "image/png",
         purpose: "any",

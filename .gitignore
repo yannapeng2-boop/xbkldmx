@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 .next/
+out/
 .open-next/
 dist/
 .wrangler/
@@ -13,5 +14,6 @@ tests/*.log
 .vinext/
 .sites/
 .vercel/
+.launcher/
 .env*
 !.env.example
